@@ -11,6 +11,7 @@ const restartButton = document.getElementById("restart-button");
 const actionButton = document.getElementById("action-button");
 const joystickZone = document.getElementById("joystick-zone");
 const joystickKnob = document.getElementById("joystick-knob");
+const appShell = document.querySelector(".app-shell");
 
 const metricClip = document.getElementById("metric-clip");
 const metricPhase = document.getElementById("metric-phase");
@@ -247,6 +248,16 @@ class LeadBelayGame {
 
   bind() {
     window.addEventListener("resize", () => this.resize());
+
+    const blockLongPressBehavior = (event) => {
+      if (appShell && event.target instanceof Node && appShell.contains(event.target)) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("contextmenu", blockLongPressBehavior);
+    document.addEventListener("selectstart", blockLongPressBehavior);
+    document.addEventListener("dragstart", blockLongPressBehavior);
 
     startButton.addEventListener("click", () => this.start());
     restartButton.addEventListener("click", () => this.reset());
