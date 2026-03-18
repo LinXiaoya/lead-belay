@@ -69,11 +69,11 @@ const CONFIG = {
     passiveSlideScale: 0.18,
   },
   hazard: {
-    preclipChance: 0.42,
+    preclipChance: 0.28,
     preclipMin: 2.1,
     preclipMax: 3.8,
-    leadMin: 8.2,
-    leadMax: 13.6,
+    leadMin: 12.3,
+    leadMax: 20.4,
     waitingPenalty: 0.3,
   },
 };
@@ -248,6 +248,7 @@ class LeadBelayGame {
 
   bind() {
     window.addEventListener("resize", () => this.resize());
+    let lastTouchEnd = 0;
 
     const blockLongPressBehavior = (event) => {
       if (appShell && event.target instanceof Node && appShell.contains(event.target)) {
@@ -258,6 +259,47 @@ class LeadBelayGame {
     document.addEventListener("contextmenu", blockLongPressBehavior);
     document.addEventListener("selectstart", blockLongPressBehavior);
     document.addEventListener("dragstart", blockLongPressBehavior);
+    document.addEventListener("dblclick", blockLongPressBehavior);
+
+    ["gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
+      document.addEventListener(eventName, blockLongPressBehavior, { passive: false });
+    });
+
+    document.addEventListener(
+      "touchmove",
+      (event) => {
+        if (
+          event.touches.length > 1 &&
+          appShell &&
+          event.target instanceof Node &&
+          appShell.contains(event.target)
+        ) {
+          event.preventDefault();
+        }
+      },
+      { passive: false },
+    );
+
+    document.addEventListener(
+      "touchend",
+      (event) => {
+        if (
+          !appShell ||
+          !(event.target instanceof Node) ||
+          !appShell.contains(event.target) ||
+          event.changedTouches.length !== 1
+        ) {
+          return;
+        }
+
+        const now = performance.now();
+        if (now - lastTouchEnd < 320) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      },
+      { passive: false },
+    );
 
     startButton.addEventListener("click", () => this.start());
     restartButton.addEventListener("click", () => this.reset());
@@ -457,6 +499,8 @@ class LeadBelayGame {
     this.feedbackBursts = [];
     this.climberSpeech = null;
     this.speechCooldown = 0;
+    this.slackNeedTime = 0;
+    this.slackNeedMode = null;
     this.eventItems = [];
 
     clearInputState(keyInput);
@@ -618,10 +662,11 @@ class LeadBelayGame {
         if (slack >= climbWindow.min) {
           this.clipProgress += delta;
           this.dismissClimberSpeech();
+          this.clearSlackNeed();
           this.advice = `第 ${this.clippedCount + 1} 把快挂：攀爬者正在抽绳入挂，请继续保持给绳。`;
         } else {
           this.advice = `第 ${this.clippedCount + 1} 把快挂前余绳不足，攀爬者抽不出 1m 绳环完成入挂。`;
-          this.promptClimberForSlack(true);
+          this.updateSlackNeed(delta, true);
         }
 
         if (this.clipProgress >= CONFIG.climber.clipTime) {
@@ -630,6 +675,7 @@ class LeadBelayGame {
           this.clipProgress = 0;
           this.climberClipSlack = Math.min(CONFIG.climber.clipDrawLength, Math.max(0, this.getSlack()));
           this.dismissClimberSpeech();
+          this.clearSlackNeed();
           this.pushEvent(`第 ${this.clippedCount} 把快挂完成。`);
 
           if (this.clippedCount >= QUICKDRAWS.length) {
@@ -647,14 +693,16 @@ class LeadBelayGame {
             this.climber.y + CONFIG.climber.climbSpeed * delta,
           );
           this.dismissClimberSpeech();
+          this.clearSlackNeed();
           this.advice = this.getClimbAdvice(slack, climbWindow);
         } else {
           this.advice = "余绳过短，攀爬者被 short-rope，停在原地等待。";
-          this.promptClimberForSlack(false);
+          this.updateSlackNeed(delta, false);
         }
       } else {
         this.subphase = "clipping";
         this.clipProgress = 0;
+        this.clearSlackNeed();
         this.advice = `到达第 ${this.clippedCount + 1} 把快挂，准备给绳入挂。`;
       }
     } else {
@@ -665,9 +713,11 @@ class LeadBelayGame {
             this.climber.y + CONFIG.climber.climbSpeed * delta,
           );
           this.dismissClimberSpeech();
+          this.clearSlackNeed();
           this.advice = "继续维持余绳，准备完成顶端保护。";
         } else {
           this.advice = "顶端前收绳过多，攀爬者无法继续向上。";
+          this.updateSlackNeed(delta, false);
         }
       } else {
         this.win();
@@ -726,6 +776,7 @@ class LeadBelayGame {
 
   startFall() {
     this.climberSpeech = null;
+    this.clearSlackNeed();
 
     if (this.phase === "preclip") {
       this.preclipSpotSpent = true;
@@ -1322,10 +1373,10 @@ class LeadBelayGame {
       return controls ? { type: "bezier", controls } : { type: "line" };
     }
 
-    const groundY = CONFIG.world.groundY + 0.04;
+    const groundY = CONFIG.world.groundY + 0.02;
     const dropPoint = { x: start.x - 0.02, y: groundY };
     const pickupPoint = {
-      x: Math.max(CONFIG.world.wallX + 0.34, Math.min(start.x - 0.46, end.x + 0.28)),
+      x: Math.max(CONFIG.world.wallX + 0.3, Math.min(start.x - 0.5, end.x + 0.24)),
       y: groundY,
     };
     const descentControls = [
@@ -1350,36 +1401,28 @@ class LeadBelayGame {
       end,
       12,
     );
-    const floorBase = Math.abs(dropPoint.x - pickupPoint.x);
-    const baseLength =
-      polylineLength(descent) + floorBase + polylineLength(ascent);
+    const floorBase = [dropPoint, pickupPoint];
+    const baseLength = polylineLength(descent) + polylineLength(floorBase) + polylineLength(ascent);
 
     if (targetLength <= baseLength + 0.04) {
       const controls = this.getSagControls(start, end, targetLength, true);
       return controls ? { type: "bezier", controls } : { type: "line" };
     }
 
-    const loops = clamp(Math.round(extra / 0.7), 1, 4);
-    const maxSwing = Math.min(1.35, CONFIG.world.belayerMaxX - dropPoint.x - 0.12);
     let low = 0;
-    let high = Math.max(0.12, maxSwing);
-    let best = [dropPoint, pickupPoint];
+    let high = Math.max(0.2, extra * 1.55 + 0.2);
+    let best = [...descent, ...floorBase.slice(1), ...ascent.slice(1)];
 
-    for (let attempt = 0; attempt < 22; attempt += 1) {
-      const mid = (low + high) * 0.5;
-      const lift = 0.05 + mid * 0.22;
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      const depth = (low + high) * 0.5;
       const floorPoints = [dropPoint];
-      const steps = 18 + loops * 6;
+      const steps = 26;
 
       for (let index = 1; index < steps; index += 1) {
         const t = index / steps;
-        const progressX = lerp(dropPoint.x, pickupPoint.x, t);
-        const swingWeight = Math.pow(1 - t, 1.35);
-        const swing = Math.sin(t * Math.PI * loops) * mid * swingWeight;
-        const liftWave = Math.pow(Math.sin(t * Math.PI * (loops + 0.5)), 2) * lift;
         floorPoints.push({
-          x: progressX + swing,
-          y: groundY + liftWave,
+          x: lerp(dropPoint.x, pickupPoint.x, t) + Math.sin(t * Math.PI * 2) * depth * 0.03,
+          y: groundY - depth * Math.pow(Math.sin(Math.PI * t), 1.08),
         });
       }
 
@@ -1392,10 +1435,10 @@ class LeadBelayGame {
       const length = polylineLength(candidate);
 
       if (length < targetLength) {
-        low = mid;
+        low = depth;
       } else {
         best = candidate;
-        high = mid;
+        high = depth;
       }
     }
 
@@ -1736,6 +1779,33 @@ class LeadBelayGame {
     this.drawHudOverlay();
   }
 
+  strokeSmoothPath(points) {
+    if (!points.length) {
+      return;
+    }
+
+    if (points.length === 1) {
+      const point = this.worldToScreen(points[0]);
+      ctx.lineTo(point.x, point.y);
+      return;
+    }
+
+    const screens = points.map((point) => this.worldToScreen(point));
+    ctx.lineTo(screens[0].x, screens[0].y);
+
+    for (let index = 1; index < screens.length - 1; index += 1) {
+      const current = screens[index];
+      const next = screens[index + 1];
+      const midX = (current.x + next.x) * 0.5;
+      const midY = (current.y + next.y) * 0.5;
+      ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+    }
+
+    const penultimate = screens[screens.length - 2];
+    const last = screens[screens.length - 1];
+    ctx.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
+  }
+
   drawBackdrop() {
     const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
     gradient.addColorStop(0, "#22334f");
@@ -1857,10 +1927,7 @@ class LeadBelayGame {
         const control2 = this.worldToScreen(firstGeometry.controls[1]);
         ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, firstEnd.x, firstEnd.y);
       } else if (firstGeometry?.type === "sampled") {
-        firstGeometry.points.forEach((point) => {
-          const screen = this.worldToScreen(point);
-          ctx.lineTo(screen.x, screen.y);
-        });
+        this.strokeSmoothPath(firstGeometry.points.slice(1));
       } else {
         ctx.lineTo(firstEnd.x, firstEnd.y);
       }
@@ -2077,10 +2144,24 @@ class LeadBelayGame {
   }
 
   drawHudOverlay() {
-    const bubbleWidth = Math.min(172, this.width * 0.42);
-    const bubbleHeight = 88;
-    const bubbleX = this.width - bubbleWidth - 16;
-    const bubbleY = 18;
+    const climberScreen = this.worldToScreen(this.climber);
+    const bubbleWidth = Math.min(170, this.width * 0.4);
+    const bubbleHeight = this.phase === "lead" ? 64 : 50;
+    let bubbleX = climberScreen.x + 34;
+    let bubbleY = climberScreen.y - bubbleHeight - 34;
+
+    if (bubbleX + bubbleWidth > this.width - 14) {
+      bubbleX = climberScreen.x - bubbleWidth - 28;
+    }
+
+    if (bubbleX < 12) {
+      bubbleX = 12;
+    }
+
+    if (bubbleY < 12) {
+      bubbleY = Math.min(this.height - bubbleHeight - 12, climberScreen.y + 24);
+    }
+
     roundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 18);
     ctx.fillStyle = "rgba(7, 10, 15, 0.48)";
     ctx.fill();
@@ -2090,29 +2171,45 @@ class LeadBelayGame {
 
     ctx.fillStyle = "#edf6f7";
     ctx.font = '700 15px "Trebuchet MS", sans-serif';
-    ctx.fillText("保护状态", bubbleX + 16, bubbleY + 24);
+    ctx.fillText(this.getPhaseLabel(), bubbleX + 14, bubbleY + 22);
 
     ctx.fillStyle = "#adbfca";
-    ctx.font = '13px "Trebuchet MS", sans-serif';
-    ctx.fillText(this.getPhaseLabel(), bubbleX + 16, bubbleY + 46);
+    ctx.font = '12px "Trebuchet MS", sans-serif';
 
     if (this.phase === "lead") {
       const slack = this.getSlack();
       const window = this.getDisplaySlackWindow(this.subphase);
-      ctx.fillText(`余绳 ${slack.toFixed(2)}m`, bubbleX + 16, bubbleY + 66);
+      ctx.fillText(`余绳 ${slack.toFixed(2)}m`, bubbleX + 14, bubbleY + 41);
       ctx.fillText(
         `建议 ${window.min.toFixed(2)}-${window.max.toFixed(2)}m`,
-        bubbleX + 16,
-        bubbleY + 84,
+        bubbleX + 14,
+        bubbleY + 57,
       );
     } else {
-      ctx.fillText("首挂前：站位与抱石", bubbleX + 16, bubbleY + 66);
-      ctx.fillText("保护即可", bubbleX + 16, bubbleY + 84);
+      ctx.fillText("跟住站位，准备抱石", bubbleX + 14, bubbleY + 40);
     }
   }
 
   random(min, max) {
     return this.rng() * (max - min) + min;
+  }
+
+  updateSlackNeed(delta, isClipping) {
+    const mode = isClipping ? "clipping" : "climbing";
+    if (this.slackNeedMode !== mode) {
+      this.slackNeedMode = mode;
+      this.slackNeedTime = 0;
+    }
+
+    this.slackNeedTime += delta;
+    if (this.slackNeedTime >= 2) {
+      this.promptClimberForSlack(isClipping);
+    }
+  }
+
+  clearSlackNeed() {
+    this.slackNeedTime = 0;
+    this.slackNeedMode = null;
   }
 
   promptClimberForSlack(isClipping) {
@@ -2125,7 +2222,7 @@ class LeadBelayGame {
       : ["给绳啊！", "给点！", "松一点！"];
     const text = lines[Math.floor(this.random(0, lines.length))];
     this.climberSpeech = { kind: "slack", text, time: 1.1 };
-    this.speechCooldown = 1.45;
+    this.speechCooldown = 2.6;
   }
 
   setInputState(nextState) {
