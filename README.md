@@ -48,6 +48,13 @@
   - `python3 scripts/validate_game.py`
   - 可选单独指定种子：`python3 scripts/validate_game.py --seed alpha --seed beta`
 
+## GitHub Pages
+
+- 仓库已包含 GitHub Pages workflow：`/Users/daiga/Documents/lead-belay/.github/workflows/deploy-pages.yml`
+- 在 GitHub 仓库 `Settings -> Pages` 中，将 `Source` 设为 `GitHub Actions`
+- 之后每次推送 `main`，都会自动部署当前静态页面
+- 默认访问地址通常为：`https://linxiaoya.github.io/lead-belay/`
+
 ## 资料来源
 
 - Petzl: `Belaying a leader`
