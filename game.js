@@ -250,8 +250,16 @@ class LeadBelayGame {
     window.addEventListener("resize", () => this.resize());
     let lastTouchEnd = 0;
 
+    const clearActiveSelection = () => {
+      const selection = window.getSelection?.();
+      if (selection && selection.rangeCount > 0) {
+        selection.removeAllRanges();
+      }
+    };
+
     const blockLongPressBehavior = (event) => {
       if (appShell && event.target instanceof Node && appShell.contains(event.target)) {
+        clearActiveSelection();
         event.preventDefault();
       }
     };
@@ -281,6 +289,16 @@ class LeadBelayGame {
     );
 
     document.addEventListener(
+      "touchstart",
+      (event) => {
+        if (appShell && event.target instanceof Node && appShell.contains(event.target)) {
+          clearActiveSelection();
+        }
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
       "touchend",
       (event) => {
         if (
@@ -300,6 +318,19 @@ class LeadBelayGame {
       },
       { passive: false },
     );
+
+    document.addEventListener("selectionchange", () => {
+      const selection = window.getSelection?.();
+      if (
+        selection &&
+        selection.rangeCount > 0 &&
+        appShell &&
+        selection.anchorNode instanceof Node &&
+        appShell.contains(selection.anchorNode)
+      ) {
+        clearActiveSelection();
+      }
+    });
 
     startButton.addEventListener("click", () => this.start());
     restartButton.addEventListener("click", () => this.reset());
@@ -494,6 +525,7 @@ class LeadBelayGame {
       spotSaves: 0,
       perfectJumps: 0,
       maxForce: 0,
+      minForce: Number.POSITIVE_INFINITY,
     };
     this.protectionHistory = [];
     this.feedbackBursts = [];
@@ -844,13 +876,15 @@ class LeadBelayGame {
       if (this.climber.y <= this.climber.radius) {
         if (this.fall.saved) {
           this.performance.spotSaves += 1;
-          this.recordProtection({
+          const record = {
             kind: "spot",
             label: this.fall.contextLabel || "首挂前",
             height: this.fall.startY ?? this.climber.y,
             force: null,
             summary: "抱石保护成功",
-          });
+          };
+          this.recordProtection(record);
+          this.spawnCatchFeedback(record);
           this.climber.y = 0.52;
           this.climber.vx = 0;
           this.climber.vy = 0;
@@ -998,6 +1032,7 @@ class LeadBelayGame {
 
     this.performance.catches += 1;
     this.performance.maxForce = Math.max(this.performance.maxForce, peakForce);
+    this.performance.minForce = Math.min(this.performance.minForce, peakForce);
     this.lastProtection = {
       force: peakForce,
       factor: fallFactor,
@@ -1553,24 +1588,48 @@ class LeadBelayGame {
     });
   }
 
-  getCatchFeedbackWord(force) {
-    const choices =
-      force < 3.5
-        ? ["好保护", "接住了", "漂亮", "顺住了"]
-        : force < 4.2
-          ? ["接住了", "稳住了", "好保护", "接得不错"]
-          : ["保住了", "接住了", "稳住了", "没落地"];
-    return choices[Math.floor(this.random(0, choices.length))];
+  getProtectionPraise(record) {
+    if (record.kind === "spot") {
+      const lines = ["完美保护", "抱得漂亮", "这下稳了", "教科书级"];
+      return {
+        title: lines[Math.floor(this.random(0, lines.length))],
+        subtitle: "抱石保护成功",
+        tint: "#d9ffe6",
+      };
+    }
+
+    if (record.force < 3) {
+      const lines = ["完美接坠", "教科书级", "太丝滑了", "漂亮极了"];
+      return {
+        title: lines[Math.floor(this.random(0, lines.length))],
+        subtitle: `冲击力：${record.force.toFixed(1)}kN`,
+        tint: "#d9ffe6",
+      };
+    }
+
+    if (record.force < 4) {
+      const lines = ["好保护", "接住了", "稳稳的", "接得不错"];
+      return {
+        title: lines[Math.floor(this.random(0, lines.length))],
+        subtitle: `冲击力：${record.force.toFixed(1)}kN`,
+        tint: "#fff0b2",
+      };
+    }
+
+    const lines = ["保住了", "接到了", "还不错", "守住了"];
+    return {
+      title: lines[Math.floor(this.random(0, lines.length))],
+      subtitle: `冲击力：${record.force.toFixed(1)}kN`,
+      tint: "#ffd8b5",
+    };
   }
 
   spawnCatchFeedback(record) {
-    if (record.force === null || !Number.isFinite(record.force)) {
-      return;
-    }
+    const praise = this.getProtectionPraise(record);
 
     this.feedbackBursts.push({
-      title: this.getCatchFeedbackWord(record.force),
-      subtitle: `冲击力：${record.force.toFixed(1)}kN`,
+      title: praise.title,
+      subtitle: praise.subtitle,
       point: {
         x: this.climber.x + 0.12,
         y: this.climber.y + 0.12,
@@ -1580,6 +1639,7 @@ class LeadBelayGame {
       driftX: this.random(-10, 10),
       tilt: this.random(-0.05, 0.05),
       force: record.force,
+      tint: praise.tint,
     });
 
     this.feedbackBursts = this.feedbackBursts.slice(-4);
@@ -1655,12 +1715,13 @@ class LeadBelayGame {
     this.stage = "won";
     const totalProtections = this.protectionHistory.length;
     const detailItems = this.buildOverlayDetails(this.protectionHistory);
+    const bestComfortForce = Number.isFinite(this.performance.minForce)
+      ? this.performance.minForce.toFixed(1)
+      : null;
     const summary =
       totalProtections > 0
         ? this.performance.catches > 0
-          ? `共成功处理 ${totalProtections} 次掉落，其中 ${this.performance.catches} 次为先锋冲坠。最佳峰值冲击力 ${this.performance.maxForce.toFixed(
-              1,
-            )}kN。`
+          ? `共成功处理 ${totalProtections} 次保护，其中包含 ${this.performance.spotSaves} 次抱石保护、${this.performance.catches} 次先锋冲坠。最舒适的一次冲击力为 ${bestComfortForce}kN。`
           : `共成功处理 ${totalProtections} 次掉落，本趟没有触发需要绳索接坠的先锋冲坠。`
         : "本趟没有触发需要处理的掉落。";
     this.showOverlay(true, {
@@ -2110,12 +2171,7 @@ class LeadBelayGame {
       const lift = progress * 42;
       const scale = 0.92 + Math.sin(Math.min(1, progress * 1.15) * Math.PI) * 0.14;
       const anchor = this.worldToScreen(burst.point);
-      const tint =
-        burst.force <= 3.6
-          ? "#fef6c8"
-          : burst.force <= 4.2
-            ? "#fff0b2"
-            : "#ffd8b5";
+      const tint = burst.tint || "#fff0b2";
 
       ctx.save();
       ctx.translate(anchor.x + burst.driftX * progress, anchor.y - 34 - lift);
