@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>先锋保护员 | Lead Belay Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Lead Belay Lab</p>
+          <h1>先锋保护员</h1>
+        </div>
+        <button class="ghost-button" id="restart-button" type="button">重新开始</button>
+      </header>
+
+      <main class="layout">
+        <section class="stage-card">
+          <canvas id="game-canvas" aria-label="先锋保护游戏画面"></canvas>
+          <div class="overlay" id="overlay">
+            <div class="overlay-card">
+              <p class="overlay-kicker" id="overlay-kicker">手机网页小游戏</p>
+              <h2 id="overlay-title">保护员已就位</h2>
+              <p id="overlay-text">
+                首挂前做抱石保护。首挂后用前移、后移、放绳、收绳维持余绳，在冲坠时抓准时机跳起缓冲。
+              </p>
+              <div class="overlay-details hidden" id="overlay-details"></div>
+              <button class="primary-button" id="start-button" type="button">开始攀登</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="control-panel">
+          <section class="panel-block touch-panel">
+            <div class="touch-surface">
+              <div class="joystick-zone" id="joystick-zone" aria-label="摇杆控制区">
+                <span class="joystick-axis horizontal"></span>
+                <span class="joystick-axis vertical"></span>
+                <span class="joystick-edge joystick-top">给绳</span>
+                <span class="joystick-edge joystick-bottom">收绳</span>
+                <span class="joystick-edge joystick-left" id="label-move-toward">前移</span>
+                <span class="joystick-edge joystick-right" id="label-move-away">后移</span>
+                <div class="joystick-knob" id="joystick-knob"></div>
+              </div>
+
+              <button class="action-button jump-pad" id="action-button" type="button">
+                <span>起跳 / 抱石保护</span>
+              </button>
+            </div>
+            <span class="sr-only" id="hint-move-toward">靠墙给绳</span>
+            <span class="sr-only" id="hint-move-away">离墙收紧</span>
+          </section>
+
+          <section class="telemetry-shell sr-only" aria-hidden="true">
+            <div class="metrics-grid">
+              <article>
+                <span>进度</span>
+                <strong id="metric-clip">0 / 10</strong>
+              </article>
+              <article>
+                <span>阶段</span>
+                <strong id="metric-phase">待命</strong>
+              </article>
+              <article>
+                <span>余绳</span>
+                <strong id="metric-slack">0.00 m</strong>
+              </article>
+              <article>
+                <span>冲击力</span>
+                <strong id="metric-force">0.0 kN</strong>
+              </article>
+            </div>
+
+            <div class="meter-header">
+              <h3>余绳窗口</h3>
+              <span id="meter-caption">首挂前仅需站位与抱石保护</span>
+            </div>
+            <div class="meter-shell">
+              <div class="meter-zone" id="meter-zone"></div>
+              <div class="meter-pointer" id="meter-pointer"></div>
+            </div>
+
+            <p id="advice-text">点击开始后，先移动到攀爬者正下方。</p>
+            <ul id="event-log"></ul>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
