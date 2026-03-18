@@ -64,7 +64,7 @@ const CONFIG = {
     jumpWindow: 0.34,
     spotWindow: 1,
     settleTime: 1.95,
-    hardCatchLimit: 4.5,
+    hardCatchLimit: 4.0,
     passiveSlideBase: 0.14,
     passiveSlideScale: 0.18,
   },
@@ -257,6 +257,23 @@ class LeadBelayGame {
       }
     };
 
+    const shieldTouchNativeBehavior = (element) => {
+      if (!element) {
+        return;
+      }
+
+      ["touchstart", "touchmove", "touchend", "touchcancel"].forEach((eventName) => {
+        element.addEventListener(
+          eventName,
+          (event) => {
+            clearActiveSelection();
+            event.preventDefault();
+          },
+          { passive: false },
+        );
+      });
+    };
+
     const blockLongPressBehavior = (event) => {
       if (appShell && event.target instanceof Node && appShell.contains(event.target)) {
         clearActiveSelection();
@@ -331,6 +348,10 @@ class LeadBelayGame {
         clearActiveSelection();
       }
     });
+
+    shieldTouchNativeBehavior(joystickZone);
+    shieldTouchNativeBehavior(actionButton);
+    shieldTouchNativeBehavior(canvas);
 
     startButton.addEventListener("click", () => this.start());
     restartButton.addEventListener("click", () => this.reset());

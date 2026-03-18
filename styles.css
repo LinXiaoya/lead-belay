@@ -63,8 +63,11 @@ button {
   touch-action: none;
 }
 
-.app-shell,
-.app-shell * {
+html,
+body,
+body *,
+body *::before,
+body *::after {
   user-select: none !important;
   -webkit-user-select: none !important;
   -webkit-touch-callout: none !important;
