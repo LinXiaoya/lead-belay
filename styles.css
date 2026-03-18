@@ -159,6 +159,10 @@ body *::after {
   pointer-events: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .overlay-card {
   width: min(420px, 100%);
   padding: 24px;
@@ -167,6 +171,32 @@ body *::after {
     radial-gradient(circle at top left, rgba(255, 179, 71, 0.18), transparent 35%),
     rgba(13, 18, 28, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.overlay-warning {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 111, 97, 0.14), rgba(255, 179, 71, 0.08)),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 179, 71, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 111, 97, 0.08);
+}
+
+.overlay-warning strong {
+  color: #ffe39f;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+}
+
+.overlay-warning p {
+  margin: 0;
+  color: #f8e9d2;
+  line-height: 1.55;
+  font-size: 0.92rem;
 }
 
 .overlay-details {
@@ -307,15 +337,29 @@ body *::after {
   width: 100%;
 }
 
-.joystick-zone {
+.touch-control {
   position: relative;
+}
+
+.joystick-control {
   width: min(100%, 182px);
   aspect-ratio: 1;
   margin: 0 auto;
+}
+
+.action-control {
+  min-height: 100%;
+}
+
+.joystick-zone {
+  position: relative;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.9);
   background: radial-gradient(circle at center, rgba(255, 255, 255, 0.06), transparent 66%);
   touch-action: none;
+  pointer-events: none;
 }
 
 .joystick-axis {
@@ -512,6 +556,7 @@ body *::after {
   padding: 14px 10px;
   text-align: center;
   touch-action: none;
+  pointer-events: none;
 }
 
 .jump-pad span {
@@ -520,6 +565,33 @@ body *::after {
   font-weight: 700;
   line-height: 1.4;
   pointer-events: none;
+}
+
+.touch-hit-layer,
+.touch-hit-button {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border-radius: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: none;
+  color: transparent;
+  font-size: 0;
+}
+
+.touch-hit-button:focus,
+.touch-hit-button:focus-visible {
+  outline: none;
+}
+
+.touch-control.active .joystick-zone,
+.touch-control.active .action-visual {
+  filter: brightness(1.08);
 }
 
 .primary-button,
@@ -622,7 +694,7 @@ kbd {
   }
 
   .joystick-zone {
-    width: min(40vw, 158px);
+    width: 100%;
   }
 
   .jump-pad {

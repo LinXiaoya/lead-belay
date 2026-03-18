@@ -5,11 +5,14 @@ const overlay = document.getElementById("overlay");
 const overlayKicker = document.getElementById("overlay-kicker");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayText = document.getElementById("overlay-text");
+const overlayWarning = document.getElementById("overlay-warning");
 const overlayDetails = document.getElementById("overlay-details");
 const startButton = document.getElementById("start-button");
 const restartButton = document.getElementById("restart-button");
 const actionButton = document.getElementById("action-button");
+const actionVisual = document.getElementById("action-visual");
 const joystickZone = document.getElementById("joystick-zone");
+const joystickHitLayer = document.getElementById("joystick-hit-layer");
 const joystickKnob = document.getElementById("joystick-knob");
 const appShell = document.querySelector(".app-shell");
 
@@ -349,7 +352,7 @@ class LeadBelayGame {
       }
     });
 
-    shieldTouchNativeBehavior(joystickZone);
+    shieldTouchNativeBehavior(joystickHitLayer);
     shieldTouchNativeBehavior(actionButton);
     shieldTouchNativeBehavior(canvas);
 
@@ -358,26 +361,27 @@ class LeadBelayGame {
 
     actionButton.addEventListener("pointerdown", (event) => {
       event.preventDefault();
-      actionButton.classList.add("active");
+      actionVisual?.parentElement?.classList.add("active");
       this.handleAction();
     });
 
     ["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
-      actionButton.addEventListener(eventName, () => actionButton.classList.remove("active"));
+      actionButton.addEventListener(eventName, () => actionVisual?.parentElement?.classList.remove("active"));
     });
 
-    if (joystickZone) {
-      joystickZone.addEventListener("pointerdown", (event) => {
+    if (joystickHitLayer) {
+      joystickHitLayer.addEventListener("pointerdown", (event) => {
         event.preventDefault();
-        const rect = joystickZone.getBoundingClientRect();
+        const rect = joystickHitLayer.getBoundingClientRect();
         this.joystick.active = true;
         this.joystick.pointerId = event.pointerId;
         this.joystick.radius = Math.min(rect.width, rect.height) * 0.28;
-        joystickZone.setPointerCapture(event.pointerId);
+        joystickHitLayer.setPointerCapture(event.pointerId);
+        joystickHitLayer.parentElement?.classList.add("active");
         this.updateJoystick(event.clientX, event.clientY);
       });
 
-      joystickZone.addEventListener("pointermove", (event) => {
+      joystickHitLayer.addEventListener("pointermove", (event) => {
         if (!this.joystick.active || event.pointerId !== this.joystick.pointerId) {
           return;
         }
@@ -394,7 +398,7 @@ class LeadBelayGame {
       };
 
       ["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
-        joystickZone.addEventListener(eventName, releaseJoystick);
+        joystickHitLayer.addEventListener(eventName, releaseJoystick);
       });
     }
 
@@ -459,11 +463,11 @@ class LeadBelayGame {
   }
 
   updateJoystick(clientX, clientY) {
-    if (!joystickZone || !joystickKnob) {
+    if (!joystickHitLayer || !joystickKnob) {
       return;
     }
 
-    const rect = joystickZone.getBoundingClientRect();
+    const rect = joystickHitLayer.getBoundingClientRect();
     const centerX = rect.left + rect.width * 0.5;
     const centerY = rect.top + rect.height * 0.5;
     const rawX = clientX - centerX;
@@ -491,6 +495,7 @@ class LeadBelayGame {
     this.joystick.x = 0;
     this.joystick.y = 0;
     clearInputState(touchInput);
+    joystickHitLayer?.parentElement?.classList.remove("active");
 
     if (joystickKnob) {
       joystickKnob.style.transform = "translate(-50%, -50%)";
@@ -563,9 +568,11 @@ class LeadBelayGame {
 
     this.updateControlLabels();
     this.showOverlay(true, {
-      kicker: "手机网页小游戏",
+      kicker: "",
       title: "保护员已就位",
       text: "首挂前做抱石保护。首挂后用前移、后移、放绳、收绳维持余绳，在冲坠时抓准时机跳起缓冲。",
+      warning:
+        "本游戏仅为教学向简化模拟，不能替代真实先锋保护训练或教学。真实的先锋保护风险非常高，请到专业机构培训。",
       button: "开始攀登",
     });
     this.syncHud();
@@ -1689,9 +1696,21 @@ class LeadBelayGame {
     }
 
     overlayKicker.textContent = content.kicker;
+    overlayKicker.classList.toggle("hidden", !content.kicker);
     overlayTitle.textContent = content.title;
     overlayText.textContent = content.text;
     startButton.textContent = content.button;
+
+    if (overlayWarning) {
+      const warning = content.warning || "";
+      overlayWarning.classList.toggle("hidden", !warning);
+      if (warning) {
+        const paragraph = overlayWarning.querySelector("p");
+        if (paragraph) {
+          paragraph.textContent = warning;
+        }
+      }
+    }
 
     if (overlayDetails) {
       overlayDetails.replaceChildren();
@@ -1750,6 +1769,7 @@ class LeadBelayGame {
       title: "已完成 10 把快挂并到达终点",
       text: `${summary} 可以重新开始继续练手感。`,
       details: detailItems,
+      warning: "",
       button: "再来一趟",
     });
     this.pushEvent("通关：成功保护攀爬者到达终点。");
@@ -1762,6 +1782,7 @@ class LeadBelayGame {
       kicker: "保护失败",
       title: "本趟先锋保护结束",
       text: reason,
+      warning: "",
       button: "重新开始",
     });
     this.pushEvent(`失败：${reason}`);

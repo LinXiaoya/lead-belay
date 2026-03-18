@@ -24,11 +24,17 @@
           <canvas id="game-canvas" aria-label="先锋保护游戏画面"></canvas>
           <div class="overlay" id="overlay">
             <div class="overlay-card">
-              <p class="overlay-kicker" id="overlay-kicker">手机网页小游戏</p>
+              <p class="overlay-kicker hidden" id="overlay-kicker"></p>
               <h2 id="overlay-title">保护员已就位</h2>
               <p id="overlay-text">
                 首挂前做抱石保护。首挂后用前移、后移、放绳、收绳维持余绳，在冲坠时抓准时机跳起缓冲。
               </p>
+              <div class="overlay-warning" id="overlay-warning">
+                <strong>⚠️ 安全警告</strong>
+                <p>
+                  本游戏仅为教学向简化模拟，不能替代真实先锋保护训练或教学。真实先锋保护风险非常高，请到专业机构培训。
+                </p>
+              </div>
               <div class="overlay-details hidden" id="overlay-details"></div>
               <button class="primary-button" id="start-button" type="button">开始攀登</button>
             </div>
@@ -38,19 +44,25 @@
         <aside class="control-panel">
           <section class="panel-block touch-panel">
             <div class="touch-surface">
-              <div class="joystick-zone" id="joystick-zone" aria-label="摇杆控制区">
-                <span class="joystick-axis horizontal"></span>
-                <span class="joystick-axis vertical"></span>
-                <span class="joystick-edge joystick-top">给绳</span>
-                <span class="joystick-edge joystick-bottom">收绳</span>
-                <span class="joystick-edge joystick-left" id="label-move-toward">前移</span>
-                <span class="joystick-edge joystick-right" id="label-move-away">后移</span>
-                <div class="joystick-knob" id="joystick-knob"></div>
+              <div class="touch-control joystick-control">
+                <div class="joystick-zone" id="joystick-zone" aria-hidden="true">
+                  <span class="joystick-axis horizontal"></span>
+                  <span class="joystick-axis vertical"></span>
+                  <span class="joystick-edge joystick-top">给绳</span>
+                  <span class="joystick-edge joystick-bottom">收绳</span>
+                  <span class="joystick-edge joystick-left" id="label-move-toward">前移</span>
+                  <span class="joystick-edge joystick-right" id="label-move-away">后移</span>
+                  <div class="joystick-knob" id="joystick-knob"></div>
+                </div>
+                <div class="touch-hit-layer" id="joystick-hit-layer" aria-label="摇杆控制区"></div>
               </div>
 
-              <button class="action-button jump-pad" id="action-button" type="button">
-                <span>起跳 / 抱石保护</span>
-              </button>
+              <div class="touch-control action-control">
+                <div class="action-button jump-pad action-visual" id="action-visual" aria-hidden="true">
+                  <span>起跳 / 抱石保护</span>
+                </div>
+                <button class="touch-hit-button" id="action-button" type="button" aria-label="起跳 / 抱石保护"></button>
+              </div>
             </div>
             <span class="sr-only" id="hint-move-toward">靠墙给绳</span>
             <span class="sr-only" id="hint-move-away">离墙收紧</span>
