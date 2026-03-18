@@ -1,5 +1,7 @@
 # 先锋保护员
 
+先锋保护员模拟器，提供一一点点教育意义。
+
 一个无依赖、可直接在手机浏览器运行的先锋保护小游戏。页面文件位于：
 
 - `/Users/daiga/Documents/lead-belay/index.html`
