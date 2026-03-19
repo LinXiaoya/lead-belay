@@ -238,8 +238,10 @@ class LeadBelayGame {
       x: 0,
       y: 0,
     };
+    this.updateViewportMetrics = this.updateViewportMetrics.bind(this);
     this.reset();
     this.bind();
+    this.updateViewportMetrics();
     this.resize();
     this.loop = this.loop.bind(this);
     this.raf = window.requestAnimationFrame(this.loop);
@@ -250,7 +252,15 @@ class LeadBelayGame {
   }
 
   bind() {
-    window.addEventListener("resize", () => this.resize());
+    const syncViewport = () => {
+      this.updateViewportMetrics();
+      this.resize();
+    };
+
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("scroll", syncViewport);
     let lastTouchEnd = 0;
 
     const clearActiveSelection = () => {
@@ -460,6 +470,14 @@ class LeadBelayGame {
           break;
       }
     });
+  }
+
+  updateViewportMetrics() {
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty(
+      "--app-height",
+      `${Math.round(viewportHeight)}px`,
+    );
   }
 
   updateJoystick(clientX, clientY) {

@@ -11,6 +11,7 @@
   --danger: #ff6f61;
   --shadow: 0 24px 72px rgba(0, 0, 0, 0.34);
   --panel-gap: 16px;
+  --app-height: 100svh;
 }
 
 * {
@@ -25,6 +26,8 @@ body {
   margin: 0;
   min-height: 100%;
   overflow: hidden;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -75,8 +78,9 @@ body *::after {
 }
 
 .app-shell {
-  min-height: 100vh;
-  height: 100svh;
+  min-height: var(--app-height);
+  height: var(--app-height);
+  max-height: var(--app-height);
   padding:
     max(16px, env(safe-area-inset-top))
     max(16px, env(safe-area-inset-right))
@@ -636,7 +640,9 @@ kbd {
 
 @media (max-width: 980px) {
   .app-shell {
-    height: 100svh;
+    min-height: var(--app-height);
+    height: var(--app-height);
+    max-height: var(--app-height);
   }
 
   .layout {
@@ -651,7 +657,9 @@ kbd {
 
 @media (max-width: 680px) {
   .app-shell {
-    height: 100svh;
+    min-height: var(--app-height);
+    height: var(--app-height);
+    max-height: var(--app-height);
     padding:
       max(12px, env(safe-area-inset-top))
       max(12px, env(safe-area-inset-right))
