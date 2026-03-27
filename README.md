@@ -1,16 +1,11 @@
-# 游戏地址（点击可直接游玩）
-https://linxiaoya.github.io/lead-belay/
-
-
 # 先锋保护员
 
 先锋保护员模拟器，提供一点点教育意义。
 
-一个无依赖、可直接在手机浏览器运行的先锋保护小游戏。页面文件位于：
+一个无依赖、可直接在手机浏览器运行的先锋保护小游戏。
 
-- `/Users/daiga/Documents/lead-belay/index.html`
-- `/Users/daiga/Documents/lead-belay/styles.css`
-- `/Users/daiga/Documents/lead-belay/game.js`
+# 游戏地址（点击可直接游玩）
+https://linxiaoya.github.io/lead-belay/
 
 ## 操作
 
