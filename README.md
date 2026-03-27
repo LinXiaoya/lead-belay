@@ -1,3 +1,7 @@
+# 游戏地址（点击可直接游玩）
+https://linxiaoya.github.io/lead-belay/
+
+
 # 先锋保护员
 
 先锋保护员模拟器，提供一点点教育意义。
